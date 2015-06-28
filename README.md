@@ -21,26 +21,12 @@ manual: http://qemu.weilnetz.de/qemu-doc.html
 install qemu:
 1.first install Qemu dependencies for Ubuntu
 sudo apt-get install build-essential gcc pkg-config glib-2.0 libglib2.0-dev libsdl1.2-dev libaio-dev libcap-dev libattr1-dev libpixman-1-dev
-
-2.install other dependencies
 sudo apt-get build-dep qemu
+2 download  qemu-linaro-1.7.0-2014.01.tar.gz 
+https://launchpad.net/qemu-linaro/+download
+3 compile qemu-linaro
+http://wiki.minix3.org/DevelopersGuide/MinixOnLinaroQemuARM
 
-3.then download latest Qemu source files from Download - QEMU
-wget http://wiki.qemu-project.org/download/qemu-2.3.0.tar.bz2
-
-4.extract it
-sudo tar -xvjf qemu-2.3.0.tar.bz2
-
-5.go to extracted folder
-cd qemu-2.3.0/
-
-6.compile it for 64bit (if you want 32 bit too add this ',i386-softmmu')
-sudo ./configure --target-list=x86_64-softmmu,arm-softmmu  (for additional platform type  ./configure --help)
-sudo make
-sudo make install 
-
-# sudo apt-get install qemu qemu-system
-# qemu-system-arm --version
 compile arm os:
 # sudo apt-get install zlibc zlib1g zlib1g-dev sed bash dpkg-dev bison flex patch texinfo automake m4 libtool tar gzip bzip2 lzma libncurses5-dev gawk gcc-multilib g++ byacc
 # mkdir -p $HOME/minix
@@ -52,10 +38,9 @@ compile arm os:
 U_BOOT_BIN_DIR=build/omap3_beagle/
 CONSOLE=tty02
 
-
-
+lauch minix
 For beaglebone
-#qemu-system-arm  -M beaglexm -drive if=sd,cache=writeback,file=minix_arm_sd.img -clock unix -serial stdio -device usb-kbd -device usb-mouse -usb
+#/home/admin/minix/qemu/bin/qemu-system-arm  -M beaglexm -drive if=sd,cache=writeback,file=minix_arm_sd.img -clock unix -serial stdio -device usb-kbd -device usb-mouse -usb
 
 For raspberry pi
 #qemu-system-arm -M versatilepb -cpu arm1176 -m 192 -hda Occidentalis_v02.img -kernel kernel-qemu -append "root=/dev/sda2" -net nic -net user,hostfwd=tcp::2222-:22,hostfwd=tcp::5800-:5800,hostfwd=tcp::5900-:5900
