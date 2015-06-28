@@ -12,10 +12,30 @@ ARM按阵营分为：
 Ⅱ、ARMv6架构阵营，代表核心：  ARM11核心
 Ⅲ、ARMv7架构阵营，代表核心：  ①高通Scorpion核心      ②Cortex A8核心
                                ③三星Hummingbird核心   ④Cortex A9核心
-ARM manual: http://infocenter.arm.com/help/index.jsp
+
+manual: http://infocenter.arm.com/help/index.jsp
 
 Virtual emulator: qemu on Ubuntu14.04
-qemu manual: http://qemu.weilnetz.de/qemu-doc.html
+manual: http://qemu.weilnetz.de/qemu-doc.html
+
+install qemu:
+# sudo apt-get install qemu qemu-system
+# qemu-system-arm --version
+compile arm os:
+# sudo apt-get install zlibc zlib1g zlib1g-dev sed bash dpkg-dev bison flex patch texinfo automake m4 libtool tar gzip bzip2 lzma libncurses5-dev gawk gcc-multilib g++
+# mkdir -p $HOME/minix
+# cd $HOME/minix
+# git clone https://github.com/jungle0755/minix.git src
+# cd src
+# vi .settings 
+# beagleboard-xm
+U_BOOT_BIN_DIR=build/omap3_beagle/
+CONSOLE=tty02
+
+#qemu-system-arm  -M beaglexm -drive if=sd,cache=writeback,file=minix_arm_sd.img -clock unix -serial stdio -device usb-kbd -device usb-mouse -usb
+
+
+
 
 
 
