@@ -1,0 +1,164 @@
+下面一些工具我大部分都用过了，不过看到文中总结的不错，拿出来共享一下，另外添加一个modinfo，可以用来查看一个内核模块的信息。在内核模块加载失败的时候查找加载失败原因很有用处。
+
+Linux 系统中有大量的工具可用于 ELF 文件的二进制调试，常用的工具在 GNU binutils 包中可以找到，注意你可能需要这些工具的 x86 版本和 arm 版本，以便在调试环境中能够调试 x86 ELF 文件和 arm ELF 文件——与交叉编译器 arm-linux-gcc 类似，我们需要所谓的“交叉调试工具”，你可以通过互联网下载别人已经编译好的 crosstool ，或者自己重新编译（ configure 时指 --target=arm-linux ）。
+GNU binutils 包在 GNU 的官方网站提供下载： http://www.gnu.org/software/binutils/ ，特别的，更多跟 arm 相关的信息和工具可以看看 gnu arm 网站： http://www.gnuarm.org/ 。
+我们将常用的 ELF 调试工具归纳介绍如下。由于这些工具的 x86 版本和 arm 版本使用起来基本没有区别，这里也不作区分。读者在使用的时候请根据使用对象的类型（用 FILE 命令查看）自行区分。
+Ø       AR
+用来建立、修改、提取静态库文件。静态库文件包含多个可重定位目标文件，其结构保证了可以恢复原始目标文件内容。比如：
+$ gcc –c file1.c file2.c
+$ ar rcs libxx.a file1.o file2.o
+这里我们先用 gcc 编译得到 file1.o file2.o 两个目标文件，然后用 ar 命令生成静态库 libxx.a 。
+当你希望查看静态库中包含了哪些目标文件时，可以用选项 -x 解开静态库文件：
+$ ar x libxx.a
+ 
+Ø       NM
+列出目标文件的符号表中定义的符号。常见的链接或者运行时发生的 unresolved symbol 类型的错误可以用 NM 来辅助调试。比如用 NM 结合 GREP 来查看变量或函数是否被定义或引用：
+$ nm [xx.o, or yy.a, or zz.so] | grep [your symbol]
+对于 C++ 程序，可以使用选项 -C 来进行所谓的 demangle —— C++ 编译器一般会将变量名或函数名进行修饰 (mangle) ，加上类信息、参数信息等，变成比较难以辨认的符号，而 -C 选项的 demangle 则可将其恢复为比较正常的符号。比如下面很简单的 C++ 程序：
+#include <iostream>
+ 
+int main()
+{
+    std::cout<<"Hello World!"<<std::endl;
+}
+编译之后用 nm 来查看：
+$ g++ -c hello.cpp
+$ nm hello.o
+00000094 t _GLOBAL__I_main
+0000003e t _Z41__static_initialization_and_destruction_0ii
+         U _ZNSolsEPFRSoS_E
+         U _ZNSt8ios_base4InitC1Ev
+         U _ZNSt8ios_base4InitD1Ev
+         U _ZSt4cout
+         U _ZSt4endlIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_
+00000000 b _ZSt8__ioinit
+         U _ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_PKc
+         U __cxa_atexit
+         U __dso_handle
+         U __gxx_personality_v0
+0000007c t __tcf_0
+00000000 T main
+这时这些 mangle 之后的 C++ 符号是比较难以辨认的，如果使用 nm –C 进行 demangle 就好多了：
+$ nm -C hello.o
+00000094 t _GLOBAL__I_main
+0000003e t __static_initialization_and_destruction_0(int, int)
+         U std::basic_ostream<char, std::char_traits<char> >::operator<<(std::basic_ostream<char, std::char_traits<char> >& (*)(std::basic_ostream<char, std::char_traits<char> >&))
+         U std::ios_base::Init::Init[in-charge]()
+         U std::ios_base::Init::~Init [in-charge]()
+         U std::cout
+         U std::basic_ostream<char, std::char_traits<char> >& std::endl<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&)
+00000000 b std::__ioinit
+         U std::basic_ostream<char, std::char_traits<char> >& std::operator<< <std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*)
+         U __cxa_atexit
+         U __dso_handle
+         U __gxx_personality_v0
+0000007c t __tcf_0
+00000000 T main
+-C 选项在其他一些二进制调试工具中也有提供，使用 C++ 开发的读者可以多加注意，毕竟 demangle 之后的符号可读性要强很多。
+ 
+Ø       OBJDUMP
+objdump 是所有二进制工具之母，能够显示一个目标文件中所有的信息，通常我们用它来反汇编 .text节中的二进制指令。
+比如对上面的 hello.o 反汇编的结果如下：
+# objdump -d hello.o
+ 
+hello.o:     file format elf32-i386
+ 
+Disassembly of section .text:
+ 
+00000000 <main>:
+   0:   55                      push   %ebp
+   1:   89 e5                   mov    %esp,%ebp
+   3:   83 ec 08                sub    $0x8,%esp
+   6:   83 e4 f0                and    $0xfffffff0,%esp
+   9:    b8 00 00 00 00          mov    $0x0,%eax
+   e:   29 c4                   sub    %eax,%esp
+  10:   83 ec 08                sub    $0x8,%esp
+  13:   68 00 00 00 00          push   $0x0
+  18:   83 ec 0c                sub    $0xc,%esp
+  1b:   68 00 00 00 00          push   $0x0
+  20:   68 00 00 00 00          push   $0x0
+  25:   e8 fc ff ff ff          call   26 <main+0x26>
+  2a:   83 c4 14                add    $0x14,%esp
+  2d:   50                      push   %eax
+  2e:   e8 fc ff ff ff          call   2f <main+0x2f>
+  33:   83 c4 10                add    $0x10,%esp
+  36:   b8 00 00 00 00          mov    $0x0,%eax
+  3b:   c9                      leave 
+  3c:   c3                      ret   
+  3d:   90                      nop   
+  ...
+注意这里用的目标文件 hello.o 和工具 objdump 都是 x86 版本的，生成的反汇编代码是 Unix 系统上传统的 AT&T 汇编，而不是多数人更熟悉的 Intel 汇编。
+如果你用 ARM 格式的 hello.o ，及针对 ARM 的交叉调试工具 arm-linux-objdump ，得到的则是 ARM汇编：
+$ arm-linux-objdump -d hello.o
+ 
+hello.o:     file format elf32-littlearm
+ 
+Disassembly of section .text:
+…
+00000180 <main>:
+  180:    e1a0c00d        mov     ip, sp
+  184:   e92dd800        stmdb   sp!, {fp, ip, lr, pc}
+  188:   e24cb004        sub     fp, ip, #4      ; 0x4
+  18c:   e59f0014        ldr     r0, [pc, #20]   ; 1a8 <.text+0x1a8>
+  190:   e59f1014        ldr     r1, [pc, #20]   ; 1ac <.text+0x1ac>
+  194:   ebfffffe        bl      194 <main+0x14>
+  198:   e59f1010        ldr     r1, [pc, #16]   ; 1b0 <.text+0x1b0>
+  19c:   ebfffffe        bl      19c <main+0x1c>
+  1a0:   e3a00000        mov     r0, #0  ; 0x0
+  1a4:   e89da800        ldmia   sp, {fp, sp, pc}
+        ...
+在主机的模拟环境中进行调试时，你可以用 AT&T 汇编来作为参考，但涉及到与 CPU 体系结构有关的代码时，最好还是反汇编得到 ARM 汇编格式的代码，这样更为准确一些。
+Ø       READELF
+readelf 可用来显示 ELF 格式可执行文件的信息。比如用 readelf 查看 hello.o 中的各个 Section 的结果如下：
+$ readelf -S hello.o
+There are 15 section headers, starting at offset 0x228:
+ 
+Section Headers:
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .text             PROGBITS        00000000 000034 0000ae 00  AX  0   0  4
+  [ 2] .rel.text         REL             00000000 000754 000060 08     13   1  4
+  [ 3] .data             PROGBITS        00000000 0000e4 000000 00  WA  0   0  4
+  [ 4] .bss              NOBITS          00000000 0000e4 000001 00  WA  0   0  4
+  [ 5] .rodata           PROGBITS        00000000 0000e4 00000d 00   A  0   0  1
+  [ 6] .ctors            PROGBITS        00000000 0000f4 000004 00  WA  0   0  4
+  [ 7] .rel.ctors        REL             00000000 0007b4 000008 08     13   6  4
+  [ 8] .eh_frame         PROGBITS        00000000 0000f8 000090 00   A  0   0  4
+  [ 9] .rel.eh_frame     REL             00000000 0007bc 000028 08     13   8  4
+  [10] .note.GNU-stack   NOTE            00000000 000188 000000 00      0   0  1
+  [11] .comment           PROGBITS        00000000 000188 000034 00      0   0  1
+  [12] .shstrtab         STRTAB          00000000 0001bc 00006a 00      0   0  1
+  [13] .symtab           SYMTAB          00000000 000480 000180 10     14   e  4
+  [14] .strtab           STRTAB           00000000 000600 000153 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings)
+  I (info), L (link order), G (group), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)
+ 
+Ø       SIZE
+size 命令可以列出目标文件每一段的大小以及总体的大小。默认情况下，对于每个目标文件或者一个归档文件中的每个模块只产生一行输出。 size 可以用来简单快速的了解 ELF 文件各个段的情况，比如：
+$ size hello.o
+   text    data     bss     dec     hex filename
+    331       4       1     336     150 hello.o
+ 
+Ø       OBJCOPY
+objcopy 用来把一种目标文件中的内容复制到另一种类型的目标文件中。一般用来将复制或替换目标文件中的某些段，或者去掉某些段。
+ 
+Ø       STRINGS
+strings 打印某个文件的可打印字符串，这些字符串最少 4 个字符长，也可以使用选项 -n 设置字符串的最小长度。默认情况下，它只打印目标文件初始化和可加载段中的可打印字符；对于其它类型的文件它打印整个文件的可打印字符，这个程序对于了解非文本文件的内容很有帮助。
+ 
+Ø       STRIP
+strip ：丢弃目标文件中的全部或者特定符号，可以用来减小可执行文件和库的大小。具体示例请参见下一章存储优化部分的相关内容。
+ 
+Ø       ADDR2LINE
+addr2line ：把程序地址转换为文件名和行号。在命令行中给它一个地址和一个可执行文件名，它就会使用这个可执行文件的调试信息指出在给出的地址上是哪个文件以及行号。具体示例请参见后面的 Core Dump分析（ 9.5 节）时，如何通过寄存器 pc 的值和 addr2line 工具找出出错的 C/C++ 源代码。
+ 
+Ø       LDD
+ldd 可用来显示执行文件需要哪些共享库 , 共享库装载管理器在哪里找到了需要的共享库。比如：
+# ldd hello
+        libstdc++.so.5 => /usr/lib/libstdc++.so.5 (0x40026000)
+        libm.so.6 => /lib/tls/libm.so.6 (0x400d9000)
+        libgcc_s.so.1 => /lib/libgcc_s.so.1 (0x400fb000)
+        libc.so.6 => /lib/tls/libc.so.6 (0x42000000)
+        /lib/ld-linux.so.2 => /lib/ld-linux.so.2 (0x40000000)
+ldd 最常用的地方是解决运行时找不到库的错误，如程序运行时得到的类似“ error while loading shared libraries: libxxx.so ”的错误，这时可以运行 ldd 来具体查看是缺少哪些库文
