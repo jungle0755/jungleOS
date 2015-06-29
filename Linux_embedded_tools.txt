@@ -1,4 +1,4 @@
-下面一些工具我大部分都用过了，不过看到文中总结的不错，拿出来共享一下，另外添加一个modinfo，可以用来查看一个内核模块的信息。在内核模块加载失败的时候查找加载失败原因很有用处。
+Linux 下常用工具
 
 Linux 系统中有大量的工具可用于 ELF 文件的二进制调试，常用的工具在 GNU binutils 包中可以找到，注意你可能需要这些工具的 x86 版本和 arm 版本，以便在调试环境中能够调试 x86 ELF 文件和 arm ELF 文件——与交叉编译器 arm-linux-gcc 类似，我们需要所谓的“交叉调试工具”，你可以通过互联网下载别人已经编译好的 crosstool ，或者自己重新编译（ configure 时指 --target=arm-linux ）。
 GNU binutils 包在 GNU 的官方网站提供下载： http://www.gnu.org/software/binutils/ ，特别的，更多跟 arm 相关的信息和工具可以看看 gnu arm 网站： http://www.gnuarm.org/ 。
